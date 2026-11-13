@@ -1,0 +1,557 @@
+{
+  "name": "W1 - Reliable Lead Intake & Deduplication.",
+  "nodes": [
+    {
+      "parameters": {
+        "multipleMethods": true,
+        "httpMethod": [
+          "POST"
+        ],
+        "path": "24758a00-ba5b-490b-978d-8158c12f7bbf",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -976,
+        48
+      ],
+      "id": "5cbcc25c-5273-4190-a355-2254e5954516",
+      "name": "Webhook",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst request = $input.first().json;\nconst data = request.body ?? request;\n\n// Safely clean text inputs\nconst clean = (value) =>\n  typeof value === \"string\" ? value.trim() : \"\";\n\nconst event_id = clean(data.event_id);\nconst email = clean(data.email).toLowerCase();\nconst name = clean(data.name).replace(/\\s+/g, \" \");\nconst programme = clean(data.programme);\nconst message = clean(data.message);\n\n// Check required values\nconst errors = [];\n\nif (!event_id) {\n  errors.push(\"Missing event_id\");\n}\n\nif (!email) {\n  errors.push(\"Missing email\");\n} else if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {\n  errors.push(\"Invalid email format\");\n}\n\n// Return structured output\nreturn [{\n  json: {\n    event_id,\n    contact_key: email,\n    email,\n    name,\n    programme,\n    message,\n    valid: errors.length === 0,\n    errors,\n    received_at: new Date().toISOString()\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        32
+      ],
+      "id": "83dc71ce-f30a-419d-a958-3d4f6162a9ad",
+      "name": "Normalize & Validate Leads"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8007ad14-e857-4fd3-914e-053f1d996a92",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "={{ $json.valid }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -448,
+        48
+      ],
+      "id": "d0789f71-f599-4b54-8be3-3b679834da0b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://REPLACE_WITH_PRIVATE_ENDPOINT/rest/v1/rpc/lab_process_enquiry",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=p_event_id",
+              "value": "={{ $json.event_id }}"
+            },
+            {
+              "name": "=p_name",
+              "value": "={{ $json.name }}"
+            },
+            {
+              "name": "=p_email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "=p_programme",
+              "value": "={{ $json.programme }}"
+            },
+            {
+              "name": "=p_message",
+              "value": "={{ $json.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -224,
+        48
+      ],
+      "id": "0cf3ee3c-ff32-4910-ad6f-cc3ca95c2ea1",
+      "name": "HTTP Request",
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c46db612-afce-4574-8b12-e740d9eaac11",
+              "name": "outcome",
+              "value": "invalid",
+              "type": "string"
+            },
+            {
+              "id": "0f7c4df3-6cc5-4959-9ecf-794331acf0db",
+              "name": "event_id",
+              "value": "={{ $json.event_id }}",
+              "type": "string"
+            },
+            {
+              "id": "02d22154-9af4-40bb-9eab-c63fc40886e1",
+              "name": "reason",
+              "value": "={{ $json.errors.join(\"; \") }}",
+              "type": "string"
+            },
+            {
+              "id": "965da680-45ee-4aec-94f9-c7f6079891b3",
+              "name": "processed_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -256,
+        304
+      ],
+      "id": "c576d9d3-6549-46cd-a5f7-06bf7610a694",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "bJLvNHuwqMNhPDs8",
+          "mode": "list",
+          "cachedResultName": "lead_intake_exceptions",
+          "cachedResultUrl": "/projects/LPTCxv5edbIW9BvM/datatables/bJLvNHuwqMNhPDs8"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "event_id": "={{ $json.event_id }}",
+            "outcome": "={{ $json.outcome }}",
+            "reason": "={{ $json.reason }}",
+            "logged_at": "={{ $json.processed_at }}",
+            "payload": "=\n{{ JSON.stringify($('Webhook').first().json.body ?? $('Webhook').first().json) }}\n"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "event_id",
+              "displayName": "event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "outcome",
+              "displayName": "outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "payload",
+              "displayName": "payload",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "logged_at",
+              "displayName": "logged_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false,
+          "column": [
+            {
+              "name": "event_id"
+            },
+            {
+              "name": "outcome"
+            },
+            {
+              "name": "reason"
+            },
+            {
+              "name": "payload"
+            },
+            {
+              "name": "logged_at",
+              "type": "date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -96,
+        384
+      ],
+      "id": "4bdb95c2-dd09-4d4c-94ff-5f0f53967ed0",
+      "name": "lead_intake_exceptions"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "40ce9568-2e46-4844-b28b-e358519f6ac5",
+              "name": "event_id",
+              "value": "={{ $('Normalize & Validate Leads').first().json.event_id }}",
+              "type": "string"
+            },
+            {
+              "id": "7cee8ee4-f432-4fa0-a942-655d63900ce6",
+              "name": "outcome",
+              "value": "failed",
+              "type": "string"
+            },
+            {
+              "id": "22da2dd7-5d9d-4f0b-9573-041c3b71bb4d",
+              "name": "reason",
+              "value": "={{ $json.error?.message ?? $json.message ?? \"Supabase request failed\" }}",
+              "type": "string"
+            },
+            {
+              "id": "f3443629-6216-4c61-a8af-34d67af4a7b4",
+              "name": "payload",
+              "value": "={{ JSON.stringify($('Webhook').first().json.body ?? $('Webhook').first().json) }}",
+              "type": "string"
+            },
+            {
+              "id": "f58b8642-a593-4a48-b74a-2e3b37c9ef55",
+              "name": "logged_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        16,
+        48
+      ],
+      "id": "95ed7012-349f-4d8c-a3f2-11f89a71b616",
+      "name": "Prepare CRM Failure"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "bJLvNHuwqMNhPDs8",
+          "mode": "list",
+          "cachedResultName": "lead_intake_exceptions",
+          "cachedResultUrl": "/projects/LPTCxv5edbIW9BvM/datatables/bJLvNHuwqMNhPDs8"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "event_id": "={{ $json.event_id }}",
+            "outcome": "={{ $json.outcome }}",
+            "reason": "={{ $json.reason }}",
+            "payload": "={{ $json.payload }}",
+            "logged_at": "={{ $json.logged_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "event_id",
+              "displayName": "event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "outcome",
+              "displayName": "outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "payload",
+              "displayName": "payload",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "logged_at",
+              "displayName": "logged_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        176,
+        160
+      ],
+      "id": "3a7342d8-d5b8-429e-8514-2feb0a0b1652",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": "=\n{{ Number($json.outcome === 'created' ? 201 : 200) }}\n"
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -32,
+        -80
+      ],
+      "id": "387f5ff9-a2bf-4c0f-8c4d-69ea3a5fd508",
+      "name": "Respond - CRM Success"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"outcome\": \"invalid\",\n  \"message\": \"Submission validation failed\"\n}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        64,
+        384
+      ],
+      "id": "360dc7ec-dc4e-480e-adfb-9cff98ea63c5",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"outcome\": \"failed\",\n  \"message\": \"CRM processing failed. Please retry later.\"\n}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        336,
+        128
+      ],
+      "id": "93877b63-d00c-4b0c-a869-e52b8cfb1b37",
+      "name": "Respond - CRM Failed"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize & Validate Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize & Validate Leads": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "lead_intake_exceptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Respond - CRM Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare CRM Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare CRM Failure": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond - CRM Success": {
+      "main": [
+        []
+      ]
+    },
+    "Insert row": {
+      "main": [
+        [
+          {
+            "node": "Respond - CRM Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "lead_intake_exceptions": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
