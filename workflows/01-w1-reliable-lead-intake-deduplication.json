@@ -7,7 +7,7 @@
         "httpMethod": [
           "POST"
         ],
-        "path": "24758a00-ba5b-490b-978d-8158c12f7bbf",
+        "path": "demo-lead-intake",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -160,10 +160,9 @@
       "parameters": {
         "dataTableId": {
           "__rl": true,
-          "value": "bJLvNHuwqMNhPDs8",
-          "mode": "list",
-          "cachedResultName": "lead_intake_exceptions",
-          "cachedResultUrl": "/projects/LPTCxv5edbIW9BvM/datatables/bJLvNHuwqMNhPDs8"
+          "value": "REPLACE_WITH_N8N_DATA_TABLE_ID",
+          "mode": "id",
+          "cachedResultName": "lead_intake_exceptions"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -310,10 +309,9 @@
       "parameters": {
         "dataTableId": {
           "__rl": true,
-          "value": "bJLvNHuwqMNhPDs8",
-          "mode": "list",
-          "cachedResultName": "lead_intake_exceptions",
-          "cachedResultUrl": "/projects/LPTCxv5edbIW9BvM/datatables/bJLvNHuwqMNhPDs8"
+          "value": "REPLACE_WITH_N8N_DATA_TABLE_ID",
+          "mode": "id",
+          "cachedResultName": "lead_intake_exceptions"
         },
         "columns": {
           "mappingMode": "defineBelow",
